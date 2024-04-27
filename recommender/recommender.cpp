@@ -9,92 +9,102 @@
 
 using namespace std;
 
-void sortRatingsAndMovies(vector<pair<float, string>>& movieRatingPairs) {
-    sort(movieRatingPairs.begin(), movieRatingPairs.end(), [](const pair<float, string>& a, const pair<float, string>& b) {
-        return (a.first != b.first) ? a.first > b.first : a.second < b.second;
+void sortRatingsAndMovies(vector < pair < float, string >> & movieRatingPairs) {
+  partial_sort(movieRatingPairs.begin(), movieRatingPairs.begin() + min(10, static_cast < int > (movieRatingPairs.size())), movieRatingPairs.end(),
+    [](const pair < float, string > & a,
+      const pair < float, string > & b) {
+      return (a.first != b.first) ? a.first > b.first : a.second < b.second;
     });
 
-    // display top 10
-    for (int i = 0; i < 10; ++i) {
-        cout << movieRatingPairs[i].second << endl;
-    }
+  string result;
+  for (int i = 0; i < 10; ++i) {
+    result += movieRatingPairs[i].second;
+    result += '\n';
+  }
+  cout << result;
 }
 
-void parseMovieCSV(const string & filename, vector<float> & user_data) {
+void parseMovieCSV(const string & filename, vector < float > & user_data) {
   ifstream file(filename);
-  vector<pair<float, string>> movieRatingPairs;
+  vector < pair < float, string >> movieRatingPairs;
+  movieRatingPairs.reserve(398);
 
   string line;
-  string movie_title;
 
   getline(file, line);
-    // skip first line
+  // skip first line
+
   while (getline(file, line)) {
     float result = 0.0f;
-    
-    istringstream ss(line);
-    int attribute_index = 0;
+    string movie_title;
+    // Movie title with quotes
+    if (line[0] == '"') {
+      line.erase(line.begin());
+      size_t end = line.find('"');
 
-    while (ss >> ws) {
-      string csvElement;
-      if (ss.peek() == '"') {
-        ss >> std::quoted(csvElement);
-        movie_title = csvElement;
-        string discard;
-        getline(ss, discard, ',');
-      } else {
-        getline(ss, csvElement, ',');
+      string values(line.begin() + end + 1, line.end());
+      movie_title.assign(line.begin(), line.begin() + end);
 
-        // some strings has trailing newline
-        if (!csvElement.empty() && int(csvElement[csvElement.length()-1]) == 13) {
-            csvElement.erase(csvElement.length()-1);
-        }
+      string token;
+      stringstream ss(values);
 
-        if (csvElement == "1") {
-          result += user_data[attribute_index];
-          attribute_index++;
-        } else if (csvElement == "0") {
-          attribute_index++;
-                        
+      // Skip the first comma
+      getline(ss, token, ',');
+
+      int attribute_index = 0;
+      while (getline(ss, token, ',')) {
+        float value = stof(token);
+        result += value * user_data[attribute_index];
+        attribute_index++;
+      }
+
+    } else {
+      stringstream ss(line);
+      string token;
+      int attribute_index = 0;
+      while (getline(ss, token, ',')) {
+        if (attribute_index == 0) {
+          movie_title = token;
         } else {
-          if (csvElement.length() != 2 && csvElement != "") {
-            movie_title = csvElement;
-          }
+          float value = stof(token);
+          result += value * user_data[attribute_index - 1];
         }
+        attribute_index++;
       }
     }
     movieRatingPairs.push_back(make_pair(result, movie_title));
   }
+
   sortRatingsAndMovies(movieRatingPairs);
 }
 
-// https://stackoverflow.com/a/5207600
-void getUserDataFromCSV(const string& filename, int user_id) {
-    vector<float> lineData;
-    ifstream file(filename);
-    file.seekg(ios::beg);
-    for(int i = 0; i <= user_id - 1; ++i) {
-        file.ignore(numeric_limits<streamsize>::max(), '\n');
+void getUserDataFromCSV(const string & filename, int user_id) {
+  vector < float > lineData;
+  lineData.reserve(20);
+  ifstream file(filename);
+  file.seekg(ios::beg);
+  for (int i = 0; i <= user_id - 1; ++i) {
+    file.ignore(numeric_limits < streamsize > ::max(), '\n');
+  }
+
+  string line;
+  if (getline(file, line)) {
+    stringstream ss(line);
+    string token;
+
+    // Skip first 2 columsn
+    for (int i = 0; i < 2; ++i) {
+      if (!getline(ss, token, ',')) {
+        break;
+      }
     }
 
-    string line;
-    if (getline(file, line)) {
-        stringstream ss(line);
-        string token;
-
-        // Skip first 2 columsn
-        for (int i = 0; i < 2; ++i) {
-            if (!getline(ss, token, ',')) {
-                break;
-            }
-        }
-        
-        while (getline(ss, token, ',')) {
-            lineData.emplace_back(stof(token));
-        }
+    while (getline(ss, token, ',')) {
+      lineData.emplace_back(stof(token));
     }
+  }
 
-    parseMovieCSV("movie_features.csv", lineData);
+  parseMovieCSV("movie_features.csv", lineData);
 }
 
 /*
@@ -102,14 +112,22 @@ void getUserDataFromCSV(const string& filename, int user_id) {
   2. Parse movie_features.csv and calculate the ratings while parsing
   3. Sort the ratings and movie titles
 */
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[]) {
   ios::sync_with_stdio(false);
   string test_input;
 
   cin >> test_input;
   test_input = test_input.substr(1);
   int user_id = atoi(test_input.c_str());
-
+  auto start = chrono::steady_clock::now();
   getUserDataFromCSV("user_features.csv", user_id);
+
+  // Capture the end time
+  auto end = chrono::steady_clock::now();
+
+  // Calculate the duration
+  std::chrono::duration < float > duration = end - start;
+
+  std::cout << "Runtime: " << duration.count() << " seconds" << std::endl;
   return 0;
 }
