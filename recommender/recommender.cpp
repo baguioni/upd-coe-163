@@ -5,10 +5,12 @@
 #include <sstream> 
 #include <iomanip>
 #include <algorithm>
+#include <cmath>
 #include <chrono>
 
 using namespace std;
 
+// https://en.cppreference.com/w/cpp/algorithm/partial_sort
 void sortRatingsAndMovies(vector < pair < float, string >> & movieRatingPairs) {
   partial_sort(movieRatingPairs.begin(), movieRatingPairs.begin() + min(10, static_cast < int > (movieRatingPairs.size())), movieRatingPairs.end(),
     [](const pair < float, string > & a,
@@ -72,7 +74,7 @@ void parseMovieCSV(const string & filename, vector < float > & user_data) {
         attribute_index++;
       }
     }
-    movieRatingPairs.push_back(make_pair(result, movie_title));
+    movieRatingPairs.push_back(make_pair(round(result * 10000) / 10000, movie_title));
   }
 
   sortRatingsAndMovies(movieRatingPairs);
